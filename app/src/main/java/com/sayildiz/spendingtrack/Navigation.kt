@@ -1,5 +1,7 @@
 package com.sayildiz.spendingtrack
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -21,60 +23,64 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.sayildiz.spendingtrack.ui.theme.SpendingTrackTheme
 
+class NavItem(val navigate: () -> Unit, val label: String)
 
 @Composable
-fun MainNavigation(modifier: Modifier) {
+fun MainScreen(modifier: Modifier) {
     val navController = rememberNavController()
+    val navItems = listOf(
+        NavItem({ navController.navigate("month") }, "Month"),
+        NavItem({ navController.navigate("year") }, "Year"),
+        NavItem({ navController.navigate("stats") }, "Stats")
+    )
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = { TopBar() },
         bottomBar = {
             BottomAppBar {
                 BottomNavigation(
-                    navigateMonth = { navController.navigate("month") },
-                    navigateYear = { navController.navigate("year") },
-                    navigateStats = { navController.navigate("stats") })
+                    navItems = navItems
+                )
             }
         },
-        floatingActionButton = { AddSpendEntryButton(modifier) {} }
-
     ) { innerPadding ->
-        NavHost(
-            modifier = modifier.padding(innerPadding),
-            navController = navController,
-            startDestination = "month"
-        ) {
-            composable("month") { MonthScreen(modifier = modifier) }
-            composable("year") { YearScreen() }
-            composable("stats") { StatsScreen() }
-        }
+        Navigation(navController, modifier.padding(innerPadding))
+    }
+}
+
+@Composable
+fun Navigation(navController: NavHostController, modifier: Modifier) {
+    NavHost(
+        modifier = modifier,
+        navController = navController,
+        startDestination = "month",
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None }
+    ) {
+        composable("month") { MonthScreen() }
+        composable("year") { YearScreen() }
+        composable("stats") { StatsScreen() }
     }
 
 }
 
 @Composable
 fun BottomNavigation(
-    navigateMonth: () -> Unit,
-    navigateYear: () -> Unit,
-    navigateStats: () -> Unit
+    navItems: List<NavItem>
 ) {
-    class NavItem(val navigate: () -> Unit, val label: String)
-
-    val items = listOf(
-        NavItem({ navigateMonth() }, "Month"),
-        NavItem({ navigateYear() }, "year"),
-        NavItem({ navigateStats() }, "stats")
-    )
     var selectedItem by remember { mutableIntStateOf(0) }
     val selectedIcons = listOf(Icons.Filled.Home, Icons.Filled.DateRange, Icons.Filled.Search)
     val unselectedIcons =
         listOf(Icons.Outlined.Home, Icons.Outlined.DateRange, Icons.Outlined.Search)
     NavigationBar {
-        items.forEachIndexed { index, item ->
+        navItems.forEachIndexed { index, item ->
             NavigationBarItem(icon = {
                 Icon(
                     if (selectedItem == index) selectedIcons[index] else unselectedIcons[index],
@@ -91,3 +97,10 @@ fun BottomNavigation(
     }
 }
 
+@Preview
+@Composable
+fun MainScreenPreview() {
+    SpendingTrackTheme {
+        MainScreen(Modifier)
+    }
+}
