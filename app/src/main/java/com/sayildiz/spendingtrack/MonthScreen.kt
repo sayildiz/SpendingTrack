@@ -35,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -81,7 +82,13 @@ fun SpendingList(
 @Composable
 fun SpendingListItem(spend: Spend, onClickDelete: (spend: Spend) -> Unit) {
     ListItem(modifier = Modifier.fillMaxWidth(),
-        headlineContent = { spend.name?.let { Text(it) } },
+        headlineContent = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                spend.name?.let { Text(it) }
+                spend.type?.let { Text(color = Color.Magenta, text = it) }
+            }
+        },
+        leadingContent = { Text(spend.amount.toString())},
         trailingContent = {
             Button(onClick = { onClickDelete(spend) }) {
                 Icon(Icons.Filled.Clear, "Delete SpendItem")
@@ -213,7 +220,7 @@ fun AddSpendDialogPreview() {
 @Composable
 fun SpendItemPreview() {
     SpendingTrackTheme {
-        SpendingListItem(Spend(name = "Amazon")) {}
+        SpendingListItem(Spend(name = "Amazon", amount = 15.99, type = "electronics")) {}
     }
 }
 

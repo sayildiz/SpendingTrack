@@ -19,7 +19,7 @@ class MonthViewModel @Inject constructor(
     // .stateIn turns cold flow to hot flow
     // scope: provide a coroutine scope
     // started: when it should emit values
-    // initial value: intial value it holds before emitting new values
+    // initial value: initial value it holds before emitting new values
     val itemsFlow: StateFlow<List<Spend>> = spendRepository.getAllSpends()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
