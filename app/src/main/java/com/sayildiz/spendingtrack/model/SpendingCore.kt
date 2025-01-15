@@ -43,6 +43,7 @@ fun SpendEntity.toSpend(): Spend {
     return Spend(
         id = this.id,
         name = this.name,
+        amount = this.amount,
         type = this.type,
         date = this.date
     )
@@ -58,6 +59,7 @@ fun Spend.toEntity(): SpendEntity {
     return SpendEntity(
         id = this.id,
         name = this.name,
+        amount = this.amount,
         type = this.type,
         date = this.date
     )
