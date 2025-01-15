@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,12 +100,15 @@ fun AddSpendEntryButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
     }
 }
 
-
 @Composable
 fun AddSpendDialog(onDismissRequest: () -> Unit, onSave: (Spend) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var spendAmount by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var spendAmount by rememberSaveable { mutableStateOf("") }
+    var type by rememberSaveable { mutableStateOf("") }
+    var isErrorName by rememberSaveable { mutableStateOf(false) }
+    var isErrorSpendAmount by rememberSaveable { mutableStateOf(false) }
+    var isErrorType by rememberSaveable { mutableStateOf(false) }
+
     Dialog(onDismissRequest = { onDismissRequest() }) {
         Card(
             modifier = Modifier
@@ -125,17 +129,21 @@ fun AddSpendDialog(onDismissRequest: () -> Unit, onSave: (Spend) -> Unit) {
                 )
                 TextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = { name = it.trim(); isErrorName = false },
                     maxLines = 1,
                     singleLine = true,
                     label = { Text("Name") },
                     keyboardOptions = KeyboardOptions(
                         imeAction = ImeAction.Next
-                    )
+                    ),
+                    isError = isErrorName,
+                    supportingText = { if (isErrorName) Text("Can't be empty") }
+
                 )
                 TextField(
                     value = spendAmount,
                     onValueChange = { newValue ->
+                        isErrorSpendAmount = false
                         val isValid =
                             newValue.isEmpty() || newValue.matches("""\d*\.?\d{0,2}""".toRegex())
                         if (isValid) {
@@ -146,14 +154,18 @@ fun AddSpendDialog(onDismissRequest: () -> Unit, onSave: (Spend) -> Unit) {
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Decimal,
                         imeAction = ImeAction.Next
-                    )
+                    ),
+                    isError = isErrorSpendAmount,
+                    supportingText = { if (isErrorSpendAmount) Text("Can't be empty") }
                 )
                 TextField(
                     value = type,
-                    onValueChange = { type = it },
+                    onValueChange = { type = it.trim(); isErrorType = false },
                     maxLines = 1,
                     singleLine = true,
                     label = { Text("Type") },
+                    isError = isErrorType,
+                    supportingText = { if (isErrorType) Text("Can't be empty") }
                 )
             }
             Row(
@@ -172,8 +184,14 @@ fun AddSpendDialog(onDismissRequest: () -> Unit, onSave: (Spend) -> Unit) {
                 Button(
                     modifier = Modifier.padding(end = 6.dp),
                     onClick = {
-                        onSave(Spend(name = name, amount = spendAmount.toDouble(), type = type))
-                        onDismissRequest()
+                        if (name.isNotBlank() && spendAmount.isNotBlank() && type.isNotBlank()) {
+                            onSave(Spend(name = name, amount = spendAmount.toDouble(), type = type))
+                            onDismissRequest()
+                        } else {
+                            name.ifBlank { isErrorName = true }
+                            spendAmount.ifBlank { isErrorSpendAmount = true }
+                            type.ifBlank { isErrorType = true }
+                        }
                     }
                 ) {
                     Text("Save")
@@ -195,7 +213,7 @@ fun AddSpendDialogPreview() {
 @Composable
 fun SpendItemPreview() {
     SpendingTrackTheme {
-        SpendingListItem(Spend(name = "Amazon"), {})
+        SpendingListItem(Spend(name = "Amazon")) {}
     }
 }
 
@@ -206,7 +224,7 @@ fun MonthScreenPreview() {
         var showAddSpendDialog by remember { mutableStateOf(false) }
         val spendList: List<Spend> = (1..10).map { Spend(name = "Amazon", amount = 15.0) }.toList()
         Box(Modifier.fillMaxSize()) {
-            SpendingList(Modifier, spendList, {})
+            SpendingList(Modifier, spendList) {}
             AddSpendEntryButton(
                 Modifier
                     .align(Alignment.BottomEnd)
