@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
@@ -44,12 +45,12 @@ import com.sayildiz.spendingtrack.ui.theme.SpendingTrackTheme
 
 @Composable
 fun MonthScreen(
-    modifier: Modifier = Modifier,
     viewModel: MonthViewModel = hiltViewModel()
 ) {
     var showAddSpendDialog by remember { mutableStateOf(false) }
+    val spendList: List<Spend> = viewModel.itemsFlow.collectAsState().value
     Box(Modifier.fillMaxSize()) {
-        SpendingList(Modifier, viewModel.itemsFlow.collectAsState().value)
+        SpendingList(Modifier, spendList, viewModel::deleteSpend)
         AddSpendEntryButton(
             Modifier
                 .align(Alignment.BottomEnd)
@@ -61,15 +62,15 @@ fun MonthScreen(
     }
 }
 
-
 @Composable
 fun SpendingList(
     modifier: Modifier = Modifier,
-    spendList: List<Spend> = listOf(Spend(name = "Amazon", amount = 15.0))
+    spendList: List<Spend> = listOf(Spend(name = "Amazon", amount = 15.0)),
+    onClickDelete: (Spend) -> Unit
 ) {
     LazyColumn(modifier = modifier.fillMaxHeight(0.5f)) {
         items(spendList) {
-            SpendingListItem(it)
+            SpendingListItem(it, onClickDelete)
             HorizontalDivider()
         }
     }
@@ -77,11 +78,15 @@ fun SpendingList(
 }
 
 @Composable
-fun SpendingListItem(spend: Spend) {
-    ListItem(
-        headlineContent = { spend.name?.let { Text(it) } }
+fun SpendingListItem(spend: Spend, onClickDelete: (spend: Spend) -> Unit) {
+    ListItem(modifier = Modifier.fillMaxWidth(),
+        headlineContent = { spend.name?.let { Text(it) } },
+        trailingContent = {
+            Button(onClick = { onClickDelete(spend) }) {
+                Icon(Icons.Filled.Clear, "Delete SpendItem")
+            }
+        }
     )
-
 }
 
 @Composable
@@ -92,7 +97,6 @@ fun AddSpendEntryButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
     ) {
         Icon(Icons.Filled.Add, "Floating Add Button")
     }
-
 }
 
 
@@ -189,8 +193,28 @@ fun AddSpendDialogPreview() {
 
 @Preview
 @Composable
+fun SpendItemPreview() {
+    SpendingTrackTheme {
+        SpendingListItem(Spend(name = "Amazon"), {})
+    }
+}
+
+@Preview
+@Composable
 fun MonthScreenPreview() {
     SpendingTrackTheme {
-        MonthScreen(Modifier)
+        var showAddSpendDialog by remember { mutableStateOf(false) }
+        val spendList: List<Spend> = (1..10).map { Spend(name = "Amazon", amount = 15.0) }.toList()
+        Box(Modifier.fillMaxSize()) {
+            SpendingList(Modifier, spendList, {})
+            AddSpendEntryButton(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+            ) { showAddSpendDialog = true }
+        }
+        if (showAddSpendDialog) {
+            AddSpendDialog({ showAddSpendDialog = false }, {})
+        }
     }
 }

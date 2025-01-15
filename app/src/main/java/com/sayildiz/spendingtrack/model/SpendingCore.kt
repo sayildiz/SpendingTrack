@@ -84,6 +84,7 @@ interface SpendDao {
 interface SpendRepository {
     fun getAllSpends(): Flow<List<Spend>>
     suspend fun insertAll(vararg spends: Spend)
+    suspend fun delete(spend: Spend)
 }
 
 class SpendRepositoryImpl @Inject constructor(
@@ -92,7 +93,7 @@ class SpendRepositoryImpl @Inject constructor(
     override fun getAllSpends(): Flow<List<Spend>> {
         return spendDao.getAll()
             .map {
-                withContext(Dispatchers.Default){
+                withContext(Dispatchers.Default) {
                     it.toSpend()
                 }
             }
@@ -101,6 +102,10 @@ class SpendRepositoryImpl @Inject constructor(
     override suspend fun insertAll(vararg spends: Spend) {
         spendDao.insertAll(*spends.map { it.toEntity() }
             .toTypedArray())
+    }
+
+    override suspend fun delete(spend: Spend) {
+        spendDao.delete(spend.toEntity())
     }
 }
 
@@ -112,7 +117,7 @@ class Converters {
 
     @TypeConverter
     fun fromDate(date: Date?): Long? {
-        return date?.time?.toLong()
+        return date?.time
     }
 }
 
