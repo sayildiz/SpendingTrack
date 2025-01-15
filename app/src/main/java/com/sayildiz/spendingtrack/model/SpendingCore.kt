@@ -15,7 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.util.Date
+import java.time.Instant
 import javax.inject.Inject
 
 
@@ -28,7 +28,7 @@ data class SpendEntity(
     @ColumnInfo(name = "amount") val amount: Double? = null,
     @ColumnInfo(name = "type") val type: String? = null,
     @ColumnInfo(name = "description") val description: String? = null,
-    @ColumnInfo(name = "date") val date: Date? = Date()
+    @ColumnInfo(name = "date") val date: Instant = Instant.now()
 )
 
 data class Spend(
@@ -36,7 +36,7 @@ data class Spend(
     val name: String? = null,
     val amount: Double? = null,
     val type: String? = null,
-    val date: Date? = Date()
+    val date: Instant = Instant.now()
 )
 
 fun SpendEntity.toSpend(): Spend {
@@ -70,7 +70,8 @@ interface SpendDao {
     @Query("SELECT * FROM spend")
     fun getAll(): Flow<List<SpendEntity>>
 
-    @Query("SELECT * FROM spend WHERE strftime('%Y-%m', date) = strftime('%Y-%m', 'now')")
+    // date is in ms, sqlite functions take input as seconds
+    @Query("SELECT * FROM spend WHERE strftime('%Y-%m', datetime(spend.date, 'unixepoch')) = strftime('%Y-%m', 'now')")
     fun getCurrentMonth(): Flow<List<SpendEntity>>
 
     @Query("SELECT * FROM spend WHERE strftime('%Y-%m', date) = strftime('%Y-%m', :date)")
@@ -93,7 +94,7 @@ class SpendRepositoryImpl @Inject constructor(
     private val spendDao: SpendDao,
 ) : SpendRepository {
     override fun getAllSpends(): Flow<List<Spend>> {
-        return spendDao.getAll()
+        return spendDao.getCurrentMonth()
             .map {
                 withContext(Dispatchers.Default) {
                     it.toSpend()
@@ -113,13 +114,13 @@ class SpendRepositoryImpl @Inject constructor(
 
 class Converters {
     @TypeConverter
-    fun fromTimeStamp(value: Long?): Date? {
-        return value?.let { Date(it) }
+    fun fromTimeStamp(value: Long): Instant {
+        return Instant.ofEpochSecond(value)
     }
 
     @TypeConverter
-    fun fromDate(date: Date?): Long? {
-        return date?.time
+    fun fromDate(date: Instant): Long {
+        return date.epochSecond
     }
 }
 
