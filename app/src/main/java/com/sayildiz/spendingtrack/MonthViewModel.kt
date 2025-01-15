@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sayildiz.spendingtrack.model.Spend
 import com.sayildiz.spendingtrack.model.SpendRepository
+import com.sayildiz.spendingtrack.model.SpendSummed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +21,10 @@ class MonthViewModel @Inject constructor(
     // scope: provide a coroutine scope
     // started: when it should emit values
     // initial value: initial value it holds before emitting new values
-    val itemsFlow: StateFlow<List<Spend>> = spendRepository.getAllSpends()
+    val spendItemsFlow: StateFlow<List<Spend>> = spendRepository.getCurrentMonth()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val spendSummedFlow: StateFlow<List<SpendSummed>> = spendRepository.getCurrentMonthGroupedByType()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun insertSpend(spend: Spend) = viewModelScope.launch {

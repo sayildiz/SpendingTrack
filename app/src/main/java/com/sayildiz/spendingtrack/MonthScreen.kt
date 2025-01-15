@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.sayildiz.spendingtrack.model.Spend
+import com.sayildiz.spendingtrack.model.SpendSummed
 import com.sayildiz.spendingtrack.ui.theme.SpendingTrackTheme
 
 @Composable
@@ -50,9 +51,16 @@ fun MonthScreen(
     viewModel: MonthViewModel = hiltViewModel()
 ) {
     var showAddSpendDialog by remember { mutableStateOf(false) }
-    val spendList: List<Spend> = viewModel.itemsFlow.collectAsState().value
+    val spendList: List<Spend> = viewModel.spendItemsFlow.collectAsState().value
+    val spendSummary: List<SpendSummed> = viewModel.spendSummedFlow.collectAsState().value
     Box(Modifier.fillMaxSize()) {
         SpendingList(Modifier, spendList, viewModel::deleteSpend)
+        SpendingSummary(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(top = 50.dp),
+            spendSummary
+        )
         AddSpendEntryButton(
             Modifier
                 .align(Alignment.BottomEnd)
@@ -67,7 +75,7 @@ fun MonthScreen(
 @Composable
 fun SpendingList(
     modifier: Modifier = Modifier,
-    spendList: List<Spend> = listOf(Spend(name = "Amazon", amount = 15.0)),
+    spendList: List<Spend>,
     onClickDelete: (Spend) -> Unit
 ) {
     LazyColumn(modifier = modifier.fillMaxHeight(0.5f)) {
@@ -76,24 +84,63 @@ fun SpendingList(
             HorizontalDivider()
         }
     }
-
+    LazyColumn(modifier = modifier.fillMaxHeight(0.5f)) {
+        items(spendList) {
+            SpendingListItem(it, onClickDelete)
+            HorizontalDivider()
+        }
+    }
 }
 
 @Composable
 fun SpendingListItem(spend: Spend, onClickDelete: (spend: Spend) -> Unit) {
     ListItem(modifier = Modifier.fillMaxWidth(),
         headlineContent = {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                spend.name?.let { Text(it) }
-                spend.type?.let { Text(color = Color.Magenta, text = it) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(spend.name)
+                Text(color = Color.Magenta, text = spend.type)
             }
         },
-        leadingContent = { Text(spend.amount.toString())},
+        leadingContent = { Text(spend.amount.toString()) },
         trailingContent = {
             Button(onClick = { onClickDelete(spend) }) {
                 Icon(Icons.Filled.Clear, "Delete SpendItem")
             }
         }
+    )
+}
+
+@Composable
+fun SpendingSummary(
+    modifier: Modifier = Modifier,
+    spendList: List<SpendSummed> = listOf(SpendSummed(type = "electronics", sum = 15.0)),
+) {
+    LazyColumn(modifier = modifier.fillMaxHeight(0.5f)) {
+        items(spendList) {
+            SpendingSummedItem(it)
+            HorizontalDivider()
+        }
+    }
+}
+
+@Composable
+fun SpendingSummedItem(summed: SpendSummed) {
+    ListItem(
+        modifier = Modifier.fillMaxWidth(),
+        headlineContent = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                if (summed.type != null) {
+                    Text(color = Color.Magenta, text = summed.type)
+                    Text(summed.sum.toString())
+                }
+            }
+        },
     )
 }
 
@@ -208,7 +255,7 @@ fun AddSpendDialog(onDismissRequest: () -> Unit, onSave: (Spend) -> Unit) {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun AddSpendDialogPreview() {
     SpendingTrackTheme {
@@ -216,7 +263,7 @@ fun AddSpendDialogPreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 fun SpendItemPreview() {
     SpendingTrackTheme {
@@ -224,14 +271,35 @@ fun SpendItemPreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
+@Composable
+fun SpendSummedPreview() {
+    SpendingTrackTheme {
+        SpendingSummedItem(SpendSummed(type = "electronics", sum = 15.99))
+    }
+}
+
+@Preview(showBackground = true)
 @Composable
 fun MonthScreenPreview() {
     SpendingTrackTheme {
         var showAddSpendDialog by remember { mutableStateOf(false) }
-        val spendList: List<Spend> = (1..10).map { Spend(name = "Amazon", amount = 15.0) }.toList()
+        val spendList: List<Spend> =
+            (1..10).map { Spend(name = "Amazon", amount = 15.0, type = "electronics") }.toList()
+        val spendSummed: List<SpendSummed> = spendList.groupBy { it.type }
+            .map { (type, spends) ->
+                SpendSummed(
+                    type = type,
+                    sum = spends.sumOf { it.amount }
+                )
+            }
         Box(Modifier.fillMaxSize()) {
             SpendingList(Modifier, spendList) {}
+            SpendingSummary(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(top = 50.dp), spendSummed
+            )
             AddSpendEntryButton(
                 Modifier
                     .align(Alignment.BottomEnd)

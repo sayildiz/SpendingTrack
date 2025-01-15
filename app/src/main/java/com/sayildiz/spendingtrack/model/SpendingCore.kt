@@ -24,19 +24,24 @@ import javax.inject.Inject
 )
 data class SpendEntity(
     @PrimaryKey(autoGenerate = true) val id: Int? = null,
-    @ColumnInfo(name = "name") val name: String? = null,
-    @ColumnInfo(name = "amount") val amount: Double? = null,
-    @ColumnInfo(name = "type") val type: String? = null,
+    @ColumnInfo(name = "name") val name: String,
+    @ColumnInfo(name = "amount") val amount: Double,
+    @ColumnInfo(name = "type") val type: String,
     @ColumnInfo(name = "description") val description: String? = null,
     @ColumnInfo(name = "date") val date: Instant = Instant.now()
 )
 
 data class Spend(
     val id: Int? = null,
-    val name: String? = null,
-    val amount: Double? = null,
-    val type: String? = null,
+    val name: String,
+    val amount: Double,
+    val type: String,
     val date: Instant = Instant.now()
+)
+
+data class SpendSummed(
+    val type: String?,
+    val sum: Double?,
 )
 
 fun SpendEntity.toSpend(): Spend {
@@ -71,11 +76,25 @@ interface SpendDao {
     fun getAll(): Flow<List<SpendEntity>>
 
     // date is in ms, sqlite functions take input as seconds
-    @Query("SELECT * FROM spend WHERE strftime('%Y-%m', datetime(spend.date, 'unixepoch')) = strftime('%Y-%m', 'now')")
+    @Query(
+        """
+        SELECT *
+                FROM spend
+                WHERE strftime('%Y-%m', datetime(spend.date, 'unixepoch')) = strftime('%Y-%m', 'now')
+        """
+    )
     fun getCurrentMonth(): Flow<List<SpendEntity>>
 
-    @Query("SELECT * FROM spend WHERE strftime('%Y-%m', date) = strftime('%Y-%m', :date)")
-    suspend fun getMonth(date: String): List<SpendEntity>
+    @Query(
+        """
+        SELECT type, SUM(amount) as sum 
+        FROM spend 
+        WHERE strftime('%Y-%m', datetime(spend.date, 'unixepoch')) = strftime('%Y-%m', 'now')
+        GROUP BY type
+        ORDER BY sum DESC
+        """
+    )
+    fun getCurrentMonthGroupedByType(): Flow<List<SpendSummed>>
 
     @Insert
     suspend fun insertAll(vararg spends: SpendEntity)
@@ -85,7 +104,8 @@ interface SpendDao {
 }
 
 interface SpendRepository {
-    fun getAllSpends(): Flow<List<Spend>>
+    fun getCurrentMonth(): Flow<List<Spend>>
+    fun getCurrentMonthGroupedByType(): Flow<List<SpendSummed>>
     suspend fun insertAll(vararg spends: Spend)
     suspend fun delete(spend: Spend)
 }
@@ -93,7 +113,7 @@ interface SpendRepository {
 class SpendRepositoryImpl @Inject constructor(
     private val spendDao: SpendDao,
 ) : SpendRepository {
-    override fun getAllSpends(): Flow<List<Spend>> {
+    override fun getCurrentMonth(): Flow<List<Spend>> {
         return spendDao.getCurrentMonth()
             .map {
                 withContext(Dispatchers.Default) {
@@ -109,6 +129,10 @@ class SpendRepositoryImpl @Inject constructor(
 
     override suspend fun delete(spend: Spend) {
         spendDao.delete(spend.toEntity())
+    }
+
+    override fun getCurrentMonthGroupedByType(): Flow<List<SpendSummed>> {
+        return spendDao.getCurrentMonthGroupedByType()
     }
 }
 
