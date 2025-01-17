@@ -44,6 +44,11 @@ data class SpendSummed(
     val sum: Double?,
 )
 
+data class SpendMonth(
+    val date: Instant,
+    val amount: Double
+)
+
 fun SpendEntity.toSpend(): Spend {
     return Spend(
         id = this.id,
@@ -79,8 +84,8 @@ interface SpendDao {
     @Query(
         """
         SELECT *
-                FROM spend
-                WHERE strftime('%Y-%m', datetime(spend.date, 'unixepoch')) = strftime('%Y-%m', 'now')
+        FROM spend
+        WHERE strftime('%Y-%m', spend.date, 'unixepoch') = strftime('%Y-%m', 'now')
         """
     )
     fun getCurrentMonth(): Flow<List<SpendEntity>>
@@ -89,23 +94,36 @@ interface SpendDao {
         """
         SELECT type, SUM(amount) as sum 
         FROM spend 
-        WHERE strftime('%Y-%m', datetime(spend.date, 'unixepoch')) = strftime('%Y-%m', 'now')
+        WHERE strftime('%Y-%m', spend.date, 'unixepoch') = strftime('%Y-%m', 'now')
         GROUP BY type
         ORDER BY sum DESC
         """
     )
     fun getCurrentMonthGroupedByType(): Flow<List<SpendSummed>>
 
+    @Query(
+        """
+        SELECT spend.date,
+        sum(amount) as amount
+        FROM spend
+        GROUP BY strftime('%Y-%m', spend.date, 'unixepoch')
+        ORDER BY spend.date DESC 
+        """
+    )
+    fun getYear(): Flow<List<SpendMonth>>
+
     @Insert
     suspend fun insertAll(vararg spends: SpendEntity)
 
     @Delete
     suspend fun delete(spend: SpendEntity)
+
 }
 
 interface SpendRepository {
     fun getCurrentMonth(): Flow<List<Spend>>
     fun getCurrentMonthGroupedByType(): Flow<List<SpendSummed>>
+    fun getYear(): Flow<List<SpendMonth>>
     suspend fun insertAll(vararg spends: Spend)
     suspend fun delete(spend: Spend)
 }
@@ -133,6 +151,10 @@ class SpendRepositoryImpl @Inject constructor(
 
     override fun getCurrentMonthGroupedByType(): Flow<List<SpendSummed>> {
         return spendDao.getCurrentMonthGroupedByType()
+    }
+
+    override fun getYear(): Flow<List<SpendMonth>> {
+        return spendDao.getYear()
     }
 }
 
